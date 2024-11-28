@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kropper",
     "slug": "expo-image-crop",
-    "privacy": "public",
+    "newArchEnabled": true,
     "platforms": [
       "ios",
       "android"
