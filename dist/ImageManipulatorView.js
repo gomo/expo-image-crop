@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import React, { Component } from 'react';
-import { Dimensions, Image, ScrollView, Modal, View, Text, SafeAreaView, TouchableOpacity, LogBox, } from 'react-native';
+import { Dimensions, Image, ScrollView, Modal, View, Text, SafeAreaView, TouchableOpacity, LogBox, Platform, } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
 import AutoHeightImage from 'react-native-auto-height-image';
@@ -33,7 +33,8 @@ class ImageManipulatorView extends Component {
             safeAreaHeight: 0,
             imageLayout: { x: 0, y: 0, width: 0, height: 0 },
             enableScroll: true,
-            scrollOffsetY: 0
+            scrollOffsetY: 0,
+            isModalVisible: false,
         };
         this.onGetCorrectSizes = (w, h) => {
             const sizes = {
@@ -151,6 +152,31 @@ class ImageManipulatorView extends Component {
         this.initializeVariables();
         this.mounted = false;
     }
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        if (prevProps.isVisible !== this.props.isVisible) {
+            this.manipurateModal(this.props.isVisible);
+        }
+    }
+    manipurateModal(visible) {
+        if (this.mounted === false) {
+            return;
+        }
+        /**
+         * iosのモーダルにはバグがあって, wrapperのrederingが終わって少し経たないと表示されないようです。
+         * https://stackoverflow.com/questions/68478119/react-native-expo-modal-not-showing-when-visible-prop-is-true-on-ios
+         * https://blog.daiki-portfolio.com/bug-react-native-modal/
+         * https://github.com/facebook/react-native/issues/32504
+         * iosの場合は500ms後に表示すれば表示されますが、元はpropsでisVisibleを受け取って表示、非表示の判断をしていましたため、このViewを使う側で
+         * timeoutを取らないといけません。それはスマートじゃないのでstateにisVisibleを持つようにしてcomponentDidUpdateでstateを更新し
+         * timeoutを取る処理はこの中に隠蔽しました。
+         */
+        if (visible === true) {
+            setTimeout(() => this.setState({ isModalVisible: true }), Platform.OS === "ios" ? 500 : 0);
+        }
+        else {
+            this.setState({ isModalVisible: false });
+        }
+    }
     initializeVariables() {
         this.currentPos = {
             left: 0,
@@ -173,6 +199,7 @@ class ImageManipulatorView extends Component {
     componentDidMount() {
         return __awaiter(this, void 0, void 0, function* () {
             this.mounted = true;
+            this.manipurateModal(this.props.isVisible);
             yield this.onConvertImageToEditableSize();
         });
     }
@@ -234,8 +261,8 @@ class ImageManipulatorView extends Component {
         // this.setState(curHeight)
     }
     render() {
-        const { isVisible, onPictureChoosed, onBeforePictureChoosed, borderColor, allowRotate = true, allowFlip = true, btnTexts, fixedMask, ratio, } = this.props;
-        const { uri, base64, cropMode, processing, } = this.state;
+        const { onPictureChoosed, onBeforePictureChoosed, borderColor, allowRotate = true, allowFlip = true, btnTexts, fixedMask, ratio, } = this.props;
+        const { uri, base64, cropMode, processing, isModalVisible, } = this.state;
         const imageRatio = this.actualSize.height / this.actualSize.width;
         const screenHeight = Dimensions.get('window').height - this.state.safeAreaHeight;
         const screenRatio = screenHeight / screenWidth;
@@ -266,7 +293,7 @@ class ImageManipulatorView extends Component {
             this.currentPos.top = cropInitialTop;
             this.currentPos.left = cropInitialLeft;
         }
-        return (React.createElement(Modal, { animationType: "slide", transparent: true, visible: isVisible, hardwareAccelerated: true, onRequestClose: () => {
+        return (React.createElement(Modal, { animationType: "slide", transparent: true, visible: isModalVisible, hardwareAccelerated: true, onRequestClose: () => {
                 this.onToggleModal();
             } },
             React.createElement(SafeAreaView, { style: {
