@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   TouchableOpacity,
   LogBox,
+  Platform,
 } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
@@ -41,6 +42,7 @@ type State = {
   enableScroll: boolean;
   scrollOffsetY: number;
   base64: string | undefined;
+  isModalVisible: boolean;
 };
 
 type ChoosedPicture = {
@@ -118,7 +120,8 @@ class ImageManipulatorView extends Component<Props, State> {
     safeAreaHeight: 0,
     imageLayout: { x: 0, y: 0, width: 0, height: 0 },
     enableScroll: true,
-    scrollOffsetY: 0
+    scrollOffsetY: 0,
+    isModalVisible: false,
   };
 
   constructor(props: Omit<Props, 'borderColor' | 'btnTexts'> & typeof ImageManipulatorView.defaultProps) {
@@ -128,6 +131,33 @@ class ImageManipulatorView extends Component<Props, State> {
     this.initializeVariables();
 
     this.mounted = false;
+  }
+
+  componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any): void {
+    if(prevProps.isVisible !== this.props.isVisible) {
+      this.manipurateModal(this.props.isVisible);
+    }
+  }
+
+  manipurateModal(visible: boolean) {
+    if(this.mounted === false) {
+      return;
+    }
+
+    /**
+     * iosのモーダルにはバグがあって, wrapperのrederingが終わって少し経たないと表示されないようです。
+     * https://stackoverflow.com/questions/68478119/react-native-expo-modal-not-showing-when-visible-prop-is-true-on-ios
+     * https://blog.daiki-portfolio.com/bug-react-native-modal/
+     * https://github.com/facebook/react-native/issues/32504
+     * iosの場合は500ms後に表示すれば表示されますが、元はpropsでisVisibleを受け取って表示、非表示の判断をしていましたため、このViewを使う側で
+     * timeoutを取らないといけません。それはスマートじゃないのでstateにisVisibleを持つようにしてcomponentDidUpdateでstateを更新し
+     * timeoutを取る処理はこの中に隠蔽しました。
+     */
+    if(visible === true) {
+      setTimeout(() => this.setState({ isModalVisible: true }), Platform.OS === "ios" ? 500 : 0)
+    } else {
+      this.setState({ isModalVisible: false });
+    }
   }
 
   initializeVariables() {
@@ -156,6 +186,7 @@ class ImageManipulatorView extends Component<Props, State> {
 
   async componentDidMount() {
     this.mounted = true;
+    this.manipurateModal(this.props.isVisible);
     await this.onConvertImageToEditableSize();
   }
 
@@ -374,7 +405,6 @@ class ImageManipulatorView extends Component<Props, State> {
 
   render() {
     const {
-      isVisible,
       onPictureChoosed,
       onBeforePictureChoosed,
       borderColor,
@@ -389,6 +419,7 @@ class ImageManipulatorView extends Component<Props, State> {
       base64,
       cropMode,
       processing,
+      isModalVisible,
     } = this.state;
 
     const imageRatio = this.actualSize.height / this.actualSize.width;
@@ -433,7 +464,7 @@ class ImageManipulatorView extends Component<Props, State> {
       <Modal
         animationType="slide"
         transparent
-        visible={isVisible}
+        visible={isModalVisible}
         hardwareAccelerated
         onRequestClose={() => {
           this.onToggleModal();
