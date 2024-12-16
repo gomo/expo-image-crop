@@ -8,8 +8,7 @@ import {
   Text,
   SafeAreaView,
   TouchableOpacity,
-  LogBox,
-  Platform,
+  LogBox
 } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
@@ -152,9 +151,12 @@ class ImageManipulatorView extends Component<Props, State> {
      * iosの場合は500ms後に表示すれば表示されますが、元はpropsでisVisibleを受け取って表示、非表示の判断をしていましたため、このViewを使う側で
      * timeoutを取らないといけません。それはスマートじゃないのでstateにisVisibleを持つようにしてcomponentDidUpdateでstateを更新し
      * timeoutを取る処理はこの中に隠蔽しました。
+     * 
+     * 2024/12/16
+     * Androidも状況により同じことが起こるようです。そのため、Androidでも500ms後に表示するようにしました。
      */
     if(visible === true) {
-      setTimeout(() => this.setState({ isModalVisible: true }), Platform.OS === "ios" ? 500 : 0)
+      setTimeout(() => this.setState({ isModalVisible: true }), 500)
     } else {
       this.setState({ isModalVisible: false });
     }
